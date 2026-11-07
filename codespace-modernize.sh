@@ -21,11 +21,11 @@ layout = Path("resources/layouts/app.php")
 s = layout.read_text()
 # Add one dashboard return action to the shared authenticated layout.
 if "topbar__dashboard" not in s:
-    pattern = r'(<a\\b[^>]*class="[^"]*topbar__home[^"]*"[^>]*>.*?</a>)'
+    pattern = r'(<a\b[^>]*class="[^"]*topbar__home[^"]*"[^>]*>.*?</a>)'
     m = re.search(pattern, s, flags=re.S)
     if not m:
         # Fall back to the known public-site link if class order differs.
-        m = re.search(r'(<a\\b[^>]*href="/"[^>]*>.*?مشاهده سایت.*?</a>)', s, flags=re.S)
+        m = re.search(r'(<a\b[^>]*href="/"[^>]*>.*?مشاهده سایت.*?</a>)', s, flags=re.S)
     if not m:
         raise SystemExit("Could not safely locate the shared topbar site link.")
     dashboard = '''\n<a class="btn btn--secondary btn--sm topbar__dashboard" href="/dashboard" title="بازگشت به داشبورد"><span aria-hidden="true">⌂</span><span>بازگشت به داشبورد</span></a>'''
@@ -39,7 +39,7 @@ link = '<link rel="stylesheet" href="/assets/css/modern-ui.css">'
 if link not in s:
     if "</head>" not in s:
         raise SystemExit("Shared layout has no closing head tag; stylesheet was not linked.")
-    s = s.replace("</head>", "    " + link + "\\n</head>", 1)
+    s = s.replace("</head>", "    " + link + "\n</head>", 1)
     layout.write_text(s)
 print("Loaded modern UI stylesheet in the shared layout.")
 
