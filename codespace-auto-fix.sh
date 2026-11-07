@@ -181,6 +181,33 @@ else
 fi
 
 echo
+echo "========== REPAIR HOME-PAGE TEST ASSERTION =========="
+/usr/bin/python3 - <<'PY'
+from pathlib import Path
+
+p = Path("tests/smoke.php")
+s = p.read_text()
+old = "check('landing links to customer portal', $pc->has('/portal'));"
+if old in s:
+    print("Customer portal link test already matches the requested header.")
+else:
+    lines = s.splitlines()
+    start = next((i for i, line in enumerate(lines) if "landing hides customer and staff sign-in links" in line), None)
+    if start is not None:
+        end = next((i for i in range(start + 1, len(lines)) if lines[i].strip() in (")", ");")), None)
+        if end is None:
+            raise SystemExit("Could not safely locate end of modified smoke assertion; no test file changes made.")
+        lines[start:end + 1] = [old]
+        p.write_text("\\n".join(lines) + "\\n")
+        print("Restored the portal-link smoke assertion (header links are intentionally present).")
+    else:
+        print("No obsolete hide-login assertion found; smoke test left unchanged.")
+PY
+
+echo "========== SMOKE TEST PHP SYNTAX =========="
+/usr/bin/php8.3 -l tests/smoke.php
+
+echo
 echo "========== TESTS =========="
 PATH="$TEST_PATH" XDEBUG_MODE=off bash tests/run-all.sh
 
