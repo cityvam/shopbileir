@@ -37,6 +37,18 @@ try {
         $customers->execute([$id]);
         echo "company_id={$id}; status={$r['status']}; users=" . (int)$users->fetchColumn() . "; customers=" . (int)$customers->fetchColumn() . "\n";
     }
+    echo "\nROLES (IDs/slugs only)\n";
+    foreach ($pdo->query("SELECT id, company_id, slug FROM roles ORDER BY company_id, id") as $r) {
+        echo "role_id={$r['id']}; company_id={$r['company_id']}; slug={$r['slug']}\n";
+    }
+    echo "\nUSERS (IDs/company/role/status only)\n";
+    foreach ($pdo->query("SELECT id, company_id, role_id, status FROM users ORDER BY company_id, id") as $r) {
+        echo "user_id={$r['id']}; company_id={$r['company_id']}; role_id={$r['role_id']}; status={$r['status']}\n";
+    }
+    echo "\nMENU SECTIONS\n";
+    foreach ($pdo->query("SELECT DISTINCT section FROM menu_items WHERE is_active=1 ORDER BY section") as $r) {
+        echo (string)($r['section'] ?? '(none)') . "\n";
+    }
     echo "\nEND PREFLIGHT\n";
 } catch (Throwable $e) {
     $m = $e->getMessage();
