@@ -15,10 +15,10 @@ foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line)
 $get = static fn(string $key, string $default = ''): string => $env[$key] ?? $default;
 $host = $get('DB_HOST', '127.0.0.1');
 $port = $get('DB_PORT', '3306');
-$db = $get('DB_DATABASE');
-$user = $get('DB_USERNAME');
-$pass = $get('DB_PASSWORD');
-if ($db === '' || $user === '') { fwrite(STDERR, "ERROR: DB_DATABASE or DB_USERNAME missing in .env.\n"); exit(1); }
+$db = $get('DB_NAME');
+$user = $get('DB_USER');
+$pass = $get('DB_PASS');
+if ($db === '' || $user === '') { fwrite(STDERR, "ERROR: DB_NAME or DB_USER missing in .env.\n"); exit(1); }
 try {
     $pdo = new PDO("mysql:host={$host};port={$port};dbname={$db};charset=utf8mb4", $user, $pass, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
