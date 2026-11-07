@@ -103,11 +103,11 @@ s = s.replace(old, new, 1)
 s = s.replace('as [$label, $value, $sub, $ic, $tone]: ?>', 'as [$label, $value, $sub, $ic, $tone, $href, $permission]: ?>', 1)
 s = s.replace(
     '<article class="stat-card<?= $tone ? \\' stat-card--\\' . $tone : \\'\\' ?>">',
-    '<?php if (\\\\App\\\\Core\\\\Auth::can($permission)): ?><a class="stat-card stat-card--link<?= $tone ? \\' stat-card--\\' . $tone : \\'\\' ?>" href="<?= e($href) ?>" aria-label="<?= e($label) ?>"><?php else: ?><article class="stat-card<?= $tone ? \\' stat-card--\\' . $tone : \\'\\' ?>"><?php endif; ?>',
+    '<?php if (\\App\\Core\\Auth::can($permission)): ?><a class="stat-card stat-card--link<?= $tone ? \\' stat-card--\\' . $tone : \\'\\' ?>" href="<?= e($href) ?>" aria-label="<?= e($label) ?>"><?php else: ?><article class="stat-card<?= $tone ? \\' stat-card--\\' . $tone : \\'\\' ?>"><?php endif; ?>',
     1
 )
-s = s.replace('    </article>\\n    <?php endforeach; ?>',
-    '    <?php if (\\\\App\\\\Core\\\\Auth::can($permission)): ?></a><?php else: ?></article><?php endif; ?>\\n    <?php endforeach; ?>', 1)
+s = s.replace('    </article>\n    <?php endforeach; ?>',
+    '    <?php if (\\App\\Core\\Auth::can($permission)): ?></a><?php else: ?></article><?php endif; ?>\n    <?php endforeach; ?>', 1)
 p.write_text(s)
 print("Dashboard statistic cards now link to related sections when permitted.")
 
