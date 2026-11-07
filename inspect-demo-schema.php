@@ -42,6 +42,11 @@ try {
     }
     echo "\nEND SCHEMA REPORT\n";
 } catch (Throwable $e) {
-    fwrite(STDERR, "ERROR: schema inspection failed (" . get_class($e) . "). Check that MariaDB is running.\n");
+    $message = $e->getMessage();
+    foreach ([$pass, $user, $db] as $secret) {
+        if ($secret !== '') $message = str_replace($secret, '[redacted]', $message);
+    }
+    $state = $e instanceof PDOException && isset($e->errorInfo[0]) ? (string)$e->errorInfo[0] : 'n/a';
+    fwrite(STDERR, "ERROR: schema inspection failed (" . get_class($e) . ", SQLSTATE " . $state . "): " . $message . "\\n");
     exit(1);
 }
