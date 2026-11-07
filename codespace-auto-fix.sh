@@ -17,7 +17,7 @@ cd "$APP_DIR"
 BACKUP_DIR="/tmp/dbp-auto-fix-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$BACKUP_DIR"
 
-for file in .env resources/views/auth/login.php resources/layouts/app.php public/assets/js/app.js public/assets/css/pages/login.css; do
+for file in .env resources/views/auth/login.php resources/layouts/app.php resources/views/dashboard/index.php app/Core/Captcha.php resources/views/components/captcha.php public/assets/js/app.js public/assets/css/pages/login.css public/assets/css/components/forms.css; do
   if [[ -f "$file" ]]; then
     mkdir -p "$BACKUP_DIR/$(dirname "$file")"
     cp -p "$file" "$BACKUP_DIR/$file"
@@ -55,6 +55,121 @@ fi
 
 /usr/bin/python3 - <<'PY'
 from pathlib import Path
+
+# Staff login: normalize the home link to exactly one.
+p = Path("resources/views/auth/login.php")
+s = p.read_text()
+import re
+s = re.sub(r'<a\b[^>]*href="/"[^>]*>\s*بازگشت به صفحه اصلی\s*</a>', '', s)
+marker = "    </form>"
+if marker not in s:
+    raise SystemExit("Could not locate end of staff login form; stopped.")
+s = s.replace(marker, marker + '\n    <a class="btn btn--ghost btn--block" href="/">بازگشت به صفحه اصلی</a>', 1)
+p.write_text(s)
+print("Staff login now has exactly one home link.")
+
+# Admin site link opens a separate tab.
+p = Path("resources/layouts/app.php")
+s = p.read_text()
+s = s.replace(
+    'href="/" title="مشاهده صفحه اصلی (سایت عمومی)"',
+    'href="/" target="_blank" rel="noopener noreferrer" title="باز کردن سایت در زبانه جدید"'
+)
+p.write_text(s)
+print("Admin site link opens in a new tab.")
+
+# Make all dashboard statistic cards permission-aware links.
+p = Path("resources/views/dashboard/index.php")
+s = p.read_text()
+old = """        ['مشتریان فعال', num($stats['customers']), '', 'users', ''],
+        ['تسهیلات فعال', num($stats['active_loans']), '', 'file-text', ''],
+        ['در انتظار تأیید', num($stats['pending']), '', 'clipboard', 'warn'],
+        ['مطالبات باقی‌مانده', money_unit($stats['outstanding']), '', 'wallet', ''],
+        ['اقساط معوق', num($stats['overdue_count']), money($stats['overdue_sum']), 'alert', 'bad'],
+        ['وصولی این ماه', money_unit($stats['collected_month']), '', 'banknote', 'ok'],
+        ['فروش این ماه', money_unit($stats['sales_month']), num($stats['orders_month']) . ' سفارش', 'cart', ''],
+        ['فروشندگان فعال', num($stats['merchants']), '', 'store', ''],"""
+new = """        ['مشتریان فعال', num($stats['customers']), '', 'users', '', '/customers', 'customers.view'],
+        ['تسهیلات فعال', num($stats['active_loans']), '', 'file-text', '', '/loans', 'loans.view'],
+        ['در انتظار تأیید', num($stats['pending']), '', 'clipboard', 'warn', '/loans', 'loans.view'],
+        ['مطالبات باقی‌مانده', money_unit($stats['outstanding']), '', 'wallet', '', '/reports', 'reports.view'],
+        ['اقساط معوق', num($stats['overdue_count']), money($stats['overdue_sum']), 'alert', 'bad', '/installments?filter=overdue', 'installments.view'],
+        ['وصولی این ماه', money_unit($stats['collected_month']), '', 'banknote', 'ok', '/reports', 'reports.view'],
+        ['فروش این ماه', money_unit($stats['sales_month']), num($stats['orders_month']) . ' سفارش', 'cart', '', '/orders', 'orders.view'],
+        ['فروشندگان فعال', num($stats['merchants']), '', 'store', '', '/merchants', 'merchants.view'],"""
+if old not in s:
+    raise SystemExit("Dashboard statistic definitions did not match; refusing to guess.")
+s = s.replace(old, new, 1)
+s = s.replace('as [$label, $value, $sub, $ic, $tone]: ?>', 'as [$label, $value, $sub, $ic, $tone, $href, $permission]: ?>', 1)
+s = s.replace(
+    '<article class="stat-card<?= $tone ? \\' stat-card--\\' . $tone : \\'\\' ?>">',
+    '<?php if (\\\\App\\\\Core\\\\Auth::can($permission)): ?><a class="stat-card stat-card--link<?= $tone ? \\' stat-card--\\' . $tone : \\'\\' ?>" href="<?= e($href) ?>" aria-label="<?= e($label) ?>"><?php else: ?><article class="stat-card<?= $tone ? \\' stat-card--\\' . $tone : \\'\\' ?>"><?php endif; ?>',
+    1
+)
+s = s.replace('    </article>\\n    <?php endforeach; ?>',
+    '    <?php if (\\\\App\\\\Core\\\\Auth::can($permission)): ?></a><?php else: ?></article><?php endif; ?>\\n    <?php endforeach; ?>', 1)
+p.write_text(s)
+print("Dashboard statistic cards now link to related sections when permitted.")
+
+# Replace hard-to-read hand-drawn CAPTCHA strokes with high-contrast bold numerals.
+p = Path("app/Core/Captcha.php")
+s = p.read_text()
+start = s.index('    /** تصویر SVG کد داده‌شده. */')
+end = s.index('    private static function ellipse()', start)
+replacement = r'''    /** تصویر SVG کد داده‌شده؛ ارقام درشت و خوانا، بدون نویز روی متن. */
+    public static function svg(string $code): string
+    {
+        $w = 260;
+        $h = 76;
+        $o = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' . $w . ' ' . $h . '" width="' . $w . '" height="' . $h . '" role="img" aria-label="کد امنیتی ۶ رقمی">';
+        $o .= '<defs><linearGradient id="captcha-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e8edff"/></linearGradient></defs>';
+        $o .= '<rect x="1" y="1" width="' . ($w - 2) . '" height="' . ($h - 2) . '" rx="12" fill="url(#captcha-bg)" stroke="#64748b" stroke-width="1.5"/>';
+        for ($i = 0; $i < 6; $i++) {
+            $x = 12 + $i * 40;
+            $y = 54 + self::rnd(-2, 2);
+            $o .= sprintf(
+                '<text x="%d" y="%.1f" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="43" font-weight="800" fill="#172554">%s</text>',
+                $x + 19, $y, htmlspecialchars($code[$i], ENT_QUOTES | ENT_XML1, 'UTF-8')
+            );
+        }
+        return $o . '</svg>';
+    }
+
+'''
+s = s.slice(0, start) + replacement + s.slice(end);
+p.write_text(s)
+print("CAPTCHA image now uses clear bold digits.")
+
+# Improve CAPTCHA image and entry field sizing/contrast.
+p = Path("public/assets/css/components/forms.css")
+s = p.read_text()
+s += """
+
+/* DBP readable numeric CAPTCHA */
+.captcha__row { align-items: center; gap: 12px; }
+.captcha__img {
+    width: 260px;
+    max-width: 100%;
+    height: 76px;
+    object-fit: contain;
+    border: 1px solid #64748b;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, .12);
+}
+.captcha__input {
+    min-height: 52px;
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: .35em;
+    color: #172554;
+    background: #fff;
+}
+.captcha__input::placeholder { letter-spacing: 0; }
+"""
+p.write_text(s)
+print("CAPTCHA display and input styles improved.")
+
 
 # Staff login: add a safe return-home link outside the form.
 p = Path("resources/views/auth/login.php")
