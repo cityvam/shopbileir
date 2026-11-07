@@ -252,8 +252,20 @@ if ($file !== false && str_starts_with($file, $root . DIRECTORY_SEPARATOR) && is
 require $root . '/index.php';
 PHP
 nohup /usr/bin/php8.3 -S 0.0.0.0:8000 -t public /tmp/digi-bile-pay-router.php > /tmp/digi-bile-pay-server.log 2>&1 < /dev/null &
-echo $! > /tmp/digi-bile-pay-server.pid
-sleep 2
+SERVER_PID=$!
+echo "$SERVER_PID" > /tmp/digi-bile-pay-server.pid
+disown "$SERVER_PID" 2>/dev/null || true
+for attempt in $(seq 1 20); do
+  if curl -fsS http://127.0.0.1:8000/ >/dev/null 2>&1; then
+    break
+  fi
+  sleep 0.5
+done
+if ! curl -fsS http://127.0.0.1:8000/ >/dev/null 2>&1; then
+  echo "ERROR: PHP server did not stay up. Recent log:"
+  tail -60 /tmp/digi-bile-pay-server.log || true
+  exit 1
+fi
 curl -sS -o /dev/null -w "Homepage HTTP %{http_code}\n" http://127.0.0.1:8000/
 curl -sS -o /dev/null -w "Staff login HTTP %{http_code}\n" http://127.0.0.1:8000/login
 curl -sS -o /dev/null -w "Portal login HTTP %{http_code}\n" http://127.0.0.1:8000/portal/login
