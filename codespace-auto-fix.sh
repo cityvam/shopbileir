@@ -97,27 +97,36 @@ new = """        ['مشتریان فعال', num($stats['customers']), '', 'user
         ['وصولی این ماه', money_unit($stats['collected_month']), '', 'banknote', 'ok', '/reports', 'reports.view'],
         ['فروش این ماه', money_unit($stats['sales_month']), num($stats['orders_month']) . ' سفارش', 'cart', '', '/orders', 'orders.view'],
         ['فروشندگان فعال', num($stats['merchants']), '', 'store', '', '/merchants', 'merchants.view'],"""
-if old not in s:
+if old in s:
+    s = s.replace(old, new, 1)
+    s = s.replace('as [$label, $value, $sub, $ic, $tone]: ?>', 'as [$label, $value, $sub, $ic, $tone, $href, $permission]: ?>', 1)
+    old_open = """    <article class="stat-card<?= $tone ? ' stat-card--' . $tone : '' ?>">"""
+    new_open = """    <?php if (\\App\\Core\\Auth::can($permission)): ?><a class="stat-card stat-card--link<?= $tone ? ' stat-card--' . $tone : '' ?>" href="<?= e($href) ?>" aria-label="<?= e($label) ?>"><?php else: ?><article class="stat-card<?= $tone ? ' stat-card--' . $tone : '' ?>"><?php endif; ?>"""
+    old_close = """    </article>
+    <?php endforeach; ?>"""
+    new_close = """    <?php if (\\App\\Core\\Auth::can($permission)): ?></a><?php else: ?></article><?php endif; ?>
+    <?php endforeach; ?>"""
+    if old_open not in s or old_close not in s:
+        raise SystemExit("Dashboard card markup did not match; refusing to guess.")
+    s = s.replace(old_open, new_open, 1).replace(old_close, new_close, 1)
+    p.write_text(s)
+    print("Dashboard statistic cards now link to related sections when permitted.")
+elif "as [$label, $value, $sub, $ic, $tone, $href, $permission]" in s:
+    print("Dashboard statistic links already applied.")
+else:
     raise SystemExit("Dashboard statistic definitions did not match; refusing to guess.")
-s = s.replace(old, new, 1)
-s = s.replace('as [$label, $value, $sub, $ic, $tone]: ?>', 'as [$label, $value, $sub, $ic, $tone, $href, $permission]: ?>', 1)
-old_open = """    <article class="stat-card<?= $tone ? ' stat-card--' . $tone : '' ?>">"""
-new_open = """    <?php if (\\App\\Core\\Auth::can($permission)): ?><a class="stat-card stat-card--link<?= $tone ? ' stat-card--' . $tone : '' ?>" href="<?= e($href) ?>" aria-label="<?= e($label) ?>"><?php else: ?><article class="stat-card<?= $tone ? ' stat-card--' . $tone : '' ?>"><?php endif; ?>"""
-old_close = """    </article>
-    <?php endforeach; ?>"""
-new_close = """    <?php if (\\App\\Core\\Auth::can($permission)): ?></a><?php else: ?></article><?php endif; ?>
-    <?php endforeach; ?>"""
-if old_open not in s or old_close not in s:
-    raise SystemExit("Dashboard card markup did not match; refusing to guess.")
-s = s.replace(old_open, new_open, 1).replace(old_close, new_close, 1)
-p.write_text(s)
-print("Dashboard statistic cards now link to related sections when permitted.")
 
 # Replace hard-to-read hand-drawn CAPTCHA strokes with high-contrast bold numerals.
 p = Path("app/Core/Captcha.php")
 s = p.read_text()
-start = s.index('    /** تصویر SVG کد داده‌شده. */')
-end = s.index('    private static function ellipse()', start)
+start_marker = '    /** تصویر SVG کد داده‌شده. */'
+if start_marker in s:
+    start = s.index(start_marker)
+    end = s.index('    private static function ellipse()', start)
+elif 'public static function svg(string $code): string' in s and 'کد داده‌شده؛ ارقام درشت و خوانا' in s:
+    start = end = -1
+else:
+    raise SystemExit("Could not locate CAPTCHA SVG method safely.")
 replacement = r'''    /** تصویر SVG کد داده‌شده؛ ارقام درشت و خوانا، بدون نویز روی متن. */
     public static function svg(string $code): string
     {
@@ -138,14 +147,18 @@ replacement = r'''    /** تصویر SVG کد داده‌شده؛ ارقام د�
     }
 
 '''
-s = s.slice(0, start) + replacement + s.slice(end);
-p.write_text(s)
-print("CAPTCHA image now uses clear bold digits.")
+if start >= 0:
+    s = s[:start] + replacement + s[end:]
+    p.write_text(s)
+    print("CAPTCHA image now uses clear bold digits.")
+else:
+    print("CAPTCHA image already uses clear bold digits.")
 
 # Improve CAPTCHA image and entry field sizing/contrast.
 p = Path("public/assets/css/components/forms.css")
 s = p.read_text()
-s += """
+if "/* DBP readable numeric CAPTCHA */" not in s:
+    s += """
 
 /* DBP readable numeric CAPTCHA */
 .captcha__row { align-items: center; gap: 12px; }
@@ -169,8 +182,10 @@ s += """
 }
 .captcha__input::placeholder { letter-spacing: 0; }
 """
-p.write_text(s)
-print("CAPTCHA display and input styles improved.")
+    p.write_text(s)
+    print("CAPTCHA display and input styles improved.")
+else:
+    print("CAPTCHA display styles already applied.")
 
 
 # Staff login: add a safe return-home link outside the form.
