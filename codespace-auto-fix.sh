@@ -188,18 +188,7 @@ else:
     print("CAPTCHA display styles already applied.")
 
 
-# Staff login: add a safe return-home link outside the form.
-p = Path("resources/views/auth/login.php")
-s = p.read_text()
-if 'href="/" class="btn btn--ghost btn--block"' not in s and 'href="/" class="btn btn--ghost"' not in s:
-    marker = "    </form>"
-    if marker not in s:
-        raise SystemExit("Could not locate end of staff login form; stopped without changing that file.")
-    s = s.replace(marker, marker + '\n    <a class="btn btn--ghost btn--block" href="/">بازگشت به صفحه اصلی</a>', 1)
-    p.write_text(s)
-    print("Added return-to-home button to staff login.")
-else:
-    print("Return-to-home button already exists.")
+# The staff-login home link was normalized once at the top of this patch block.
 
 # Password toggle JS: add only when the data attribute exists but handler does not.
 p = Path("public/assets/js/app.js")
