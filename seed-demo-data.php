@@ -14,14 +14,14 @@ foreach (file($root . '/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as
     $line = trim($line);
     if ($line === '' || str_starts_with($line, '#') || !str_contains($line, '=')) continue;
     [$k, $v] = explode('=', $line, 2);
-    $env[trim($k)] = trim(trim($v), " \\t\\n\\r\\0\\x0B'\"");
+    $env[trim($k)] = trim(trim($v), " \t\n\r\0\x0B'\"");
 }
 $host = $env['DB_HOST'] ?? '127.0.0.1';
 $port = $env['DB_PORT'] ?? '3306';
 $db = $env['DB_NAME'] ?? '';
 $user = $env['DB_USER'] ?? '';
 $pass = $env['DB_PASS'] ?? '';
-if ($db === '' || $user === '') { fwrite(STDERR, "ERROR: DB_NAME or DB_USER missing.\\n"); exit(1); }
+if ($db === '' || $user === '') { fwrite(STDERR, "ERROR: DB_NAME or DB_USER missing.\n"); exit(1); }
 
 $companyId = 1;
 $userId = 1;
@@ -141,13 +141,13 @@ try {
 
     if($apply){ $pdo->commit(); }
     else { $pdo->rollBack(); }
-    echo $apply ? "DEMO SEED COMPLETED (company_id=1)\\n" : "DRY RUN OK; no rows were saved. Run with --apply to insert.\\n";
-    foreach($added as $table=>$count) echo $table.": ".$count.($apply ? " inserted" : " would insert")."\\n";
-    echo "Existing users, company 2, accounts, fiscal years and financial ledgers were not modified.\\n";
+    echo $apply ? "DEMO SEED COMPLETED (company_id=1)\n" : "DRY RUN OK; no rows were saved. Run with --apply to insert.\n";
+    foreach($added as $table=>$count) echo $table.": ".$count.($apply ? " inserted" : " would insert")."\n";
+    echo "Existing users, company 2, accounts, fiscal years and financial ledgers were not modified.\n";
 } catch(Throwable $e) {
     if(isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
     $m=$e->getMessage();
     foreach([$pass??'',$user??'',$db??''] as $secret) if($secret!=='') $m=str_replace($secret,'[redacted]',$m);
-    fwrite(STDERR,"ERROR: ".get_class($e).": ".$m."\\n");
+    fwrite(STDERR,"ERROR: ".get_class($e).": ".$m."\n");
     exit(1);
 }
