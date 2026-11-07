@@ -101,13 +101,15 @@ if old not in s:
     raise SystemExit("Dashboard statistic definitions did not match; refusing to guess.")
 s = s.replace(old, new, 1)
 s = s.replace('as [$label, $value, $sub, $ic, $tone]: ?>', 'as [$label, $value, $sub, $ic, $tone, $href, $permission]: ?>', 1)
-s = s.replace(
-    '<article class="stat-card<?= $tone ? \\' stat-card--\\' . $tone : \\'\\' ?>">',
-    '<?php if (\\App\\Core\\Auth::can($permission)): ?><a class="stat-card stat-card--link<?= $tone ? \\' stat-card--\\' . $tone : \\'\\' ?>" href="<?= e($href) ?>" aria-label="<?= e($label) ?>"><?php else: ?><article class="stat-card<?= $tone ? \\' stat-card--\\' . $tone : \\'\\' ?>"><?php endif; ?>',
-    1
-)
-s = s.replace('    </article>\n    <?php endforeach; ?>',
-    '    <?php if (\\App\\Core\\Auth::can($permission)): ?></a><?php else: ?></article><?php endif; ?>\n    <?php endforeach; ?>', 1)
+old_open = """    <article class="stat-card<?= $tone ? ' stat-card--' . $tone : '' ?>">"""
+new_open = """    <?php if (\\App\\Core\\Auth::can($permission)): ?><a class="stat-card stat-card--link<?= $tone ? ' stat-card--' . $tone : '' ?>" href="<?= e($href) ?>" aria-label="<?= e($label) ?>"><?php else: ?><article class="stat-card<?= $tone ? ' stat-card--' . $tone : '' ?>"><?php endif; ?>"""
+old_close = """    </article>
+    <?php endforeach; ?>"""
+new_close = """    <?php if (\\App\\Core\\Auth::can($permission)): ?></a><?php else: ?></article><?php endif; ?>
+    <?php endforeach; ?>"""
+if old_open not in s or old_close not in s:
+    raise SystemExit("Dashboard card markup did not match; refusing to guess.")
+s = s.replace(old_open, new_open, 1).replace(old_close, new_close, 1)
 p.write_text(s)
 print("Dashboard statistic cards now link to related sections when permitted.")
 
